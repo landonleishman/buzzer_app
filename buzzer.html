@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Night Buzzer</title>
+    <style>
+        .buzzer {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 20px;
+            cursor: pointer;
+            border: none;
+            font-size: 24px;
+        }
+        
+        #team1-buzzer {
+            background-color: #ff4444;
+        }
+        
+        #team2-buzzer {
+            background-color: #4444ff;
+        }
+        
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #result {
+            font-size: 32px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="team-select">
+        <h2>Select Your Team</h2>
+        <button onclick="selectTeam(1)">Join Team 1</button>
+        <button onclick="selectTeam(2)">Join Team 2</button>
+    </div>
+    
+    <div id="buzzer-area" style="display: none;">
+        <button id="team1-buzzer" class="buzzer" onclick="buzz(1)" disabled>Team 1</button>
+        <button id="team2-buzzer" class="buzzer" onclick="buzz(2)" disabled>Team 2</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let socket = new WebSocket('ws://' + window.location.host + '/ws');
+        let myTeam = 0;
+        
+        socket.onmessage = function(event) {
+            let data = JSON.parse(event.data);
+            
+            if (data.type === 'buzz') {
+                document.getElementById('result').innerText = `Team ${data.team} buzzed first!`;
+                document.getElementById('team1-buzzer').disabled = true;
+                document.getElementById('team2-buzzer').disabled = true;
+            } else if (data.type === 'reset') {
+                document.getElementById('result').innerText = '';
+                if (myTeam !== 0) {
+                    document.getElementById(`team${myTeam}-buzzer`).disabled = false;
+                }
+            } else if (data.type === 'teamUpdate') {
+                // Enable/disable buzzers based on team selection
+                document.getElementById(`team${data.team}-buzzer`).disabled = false;
+            }
+        };
+
+        function selectTeam(team) {
+            myTeam = team;
+            document.getElementById('team-select').style.display = 'none';
+            document.getElementById('buzzer-area').style.display = 'block';
+            socket.send(JSON.stringify({
+                type: 'teamSelect',
+                team: team
+            }));
+        }
+
+        function buzz(team) {
+            socket.send(JSON.stringify({
+                type: 'buzz',
+                team: team
+            }));
+            document.getElementById(`team${team}-buzzer`).disabled = true;
+        }
+    </script>
+</body>
+</html>
