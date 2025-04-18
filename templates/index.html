@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trivia Buzzer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .buzzer {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 20px;
+            cursor: pointer;
+            border: none;
+            font-size: 24px;
+            transition: transform 0.1s;
+        }
+        .buzzer:active {
+            transform: scale(0.95);
+        }
+        #teamA { background-color: #ff4444; }
+        #teamB { background-color: #4444ff; color: white; }
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #result {
+            font-size: 32px;
+            margin: 20px;
+        }
+        #reset {
+            font-size: 20px;
+            padding: 10px 20px;
+            margin: 20px;
+        }
+        .view-select {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-select">
+        <button onclick="showView('host')">Host View</button>
+        <button onclick="showView('teamA')">Team A</button>
+        <button onclick="showView('teamB')">Team B</button>
+    </div>
+
+    <div id="hostView" style="display: none;">
+        <h1>Host View</h1>
+        <div id="hostResult">Waiting for buzzes...</div>
+        <button id="reset">Reset Game</button>
+    </div>
+
+    <div id="teamAView" style="display: none;">
+        <h1>Team A</h1>
+        <button id="teamA" class="buzzer">BUZZ!</button>
+        <div id="teamAResult"></div>
+    </div>
+
+    <div id="teamBView" style="display: none;">
+        <h1>Team B</h1>
+        <button id="teamB" class="buzzer">BUZZ!</button>
+        <div id="teamBResult"></div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentView = 'host';
+
+        function showView(view) {
+            document.getElementById('hostView').style.display = 'none';
+            document.getElementById('teamAView').style.display = 'none';
+            document.getElementById('teamBView').style.display = 'none';
+            document.getElementById(view + 'View').style.display = 'block';
+            currentView = view;
+        }
+
+        // Initially show host view
+        showView('host');
+
+        // Team buzzer handlers
+        document.getElementById('teamA').onclick = () => {
+            socket.emit('buzz', 'A');
+            document.getElementById('teamA').disabled = true;
+            document.getElementById('teamA').classList.add('disabled');
+        };
+
+        document.getElementById('teamB').onclick = () => {
+            socket.emit('buzz', 'B');
+            document.getElementById('teamB').disabled = true;
+            document.getElementById('teamB').classList.add('disabled');
+        };
+
+        // Reset button handler
+        document.getElementById('reset').onclick = () => {
+            socket.emit('reset');
+        };
+
+        // Socket event handlers
+        socket.on('buzz_result', (data) => {
+            const result = `Team ${data.team} buzzed first!`;
+            document.getElementById('hostResult').textContent = result;
+            document.getElementById('teamAResult').textContent = result;
+            document.getElementById('teamBResult').textContent = result;
+            
+            document.getElementById('teamA').disabled = true;
+            document.getElementById('teamB').disabled = true;
+            document.getElementById('teamA').classList.add('disabled');
+            document.getElementById('teamB').classList.add('disabled');
+        });
+
+        socket.on('game_reset', () => {
+            document.getElementById('hostResult').textContent = 'Waiting for buzzes...';
+            document.getElementById('teamAResult').textContent = '';
+            document.getElementById('teamBResult').textContent = '';
+            
+            document.getElementById('teamA').disabled = false;
+            document.getElementById('teamB').disabled = false;
+            document.getElementById('teamA').classList.remove('disabled');
+            document.getElementById('teamB').classList.remove('disabled');
+        });
+    </script>
+</body>
+</html> 
