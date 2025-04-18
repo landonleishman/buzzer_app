@@ -3,79 +3,230 @@
 <head>
     <title>Trivia Buzzer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body {
-            text-align: center;
-            font-family: Arial, sans-serif;
-            margin: 20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
         }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .view-select {
+            margin: 2rem 0;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .view-select button {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            margin: 0 0.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .view-select button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
         .buzzer {
-            width: 200px;
-            height: 200px;
+            width: 250px;
+            height: 250px;
             border-radius: 50%;
-            margin: 20px;
+            margin: 2rem auto;
             cursor: pointer;
             border: none;
-            font-size: 24px;
-            transition: transform 0.1s;
+            font-size: 2rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
+
+        #teamA {
+            background: linear-gradient(145deg, #ff4444, #ff6b6b);
+            color: white;
+        }
+
+        #teamB {
+            background: linear-gradient(145deg, #4444ff, #6b6bff);
+            color: white;
+        }
+
+        .buzzer:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .buzzer:hover:before {
+            opacity: 1;
+        }
+
         .buzzer:active {
             transform: scale(0.95);
         }
-        #teamA { background-color: #ff4444; }
-        #teamB { background-color: #4444ff; color: white; }
+
         .disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: scale(1) !important;
         }
-        #result {
-            font-size: 32px;
-            margin: 20px;
+
+        .disabled:before {
+            display: none;
         }
+
+        h1 {
+            font-size: 2.5rem;
+            margin: 1rem 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #hostResult, #teamAResult, #teamBResult {
+            font-size: 1.8rem;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.5s ease;
+        }
+
         #reset {
-            font-size: 20px;
-            padding: 10px 20px;
-            margin: 20px;
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
         }
-        .view-select {
-            margin-bottom: 30px;
+
+        #reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+        }
+
+        #reset:active {
+            transform: translateY(0);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .view {
+            opacity: 0;
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .view.active {
+            opacity: 1;
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
         }
     </style>
 </head>
 <body>
-    <div class="view-select">
-        <button onclick="showView('host')">Host View</button>
-        <button onclick="showView('teamA')">Team A</button>
-        <button onclick="showView('teamB')">Team B</button>
+    <div class="container">
+        <div class="view-select">
+            <button onclick="showView('host')">Host View</button>
+            <button onclick="showView('teamA')">Team A</button>
+            <button onclick="showView('teamB')">Team B</button>
+        </div>
+
+        <div id="hostView" class="view">
+            <h1>🎯 Game Host</h1>
+            <div id="hostResult">Waiting for buzzes...</div>
+            <button id="reset">Reset Round</button>
+        </div>
+
+        <div id="teamAView" class="view">
+            <h1>🔴 Team A</h1>
+            <button id="teamA" class="buzzer">BUZZ!</button>
+            <div id="teamAResult"></div>
+        </div>
+
+        <div id="teamBView" class="view">
+            <h1>🔵 Team B</h1>
+            <button id="teamB" class="buzzer">BUZZ!</button>
+            <div id="teamBResult"></div>
+        </div>
     </div>
 
-    <div id="hostView" style="display: none;">
-        <h1>Host View</h1>
-        <div id="hostResult">Waiting for buzzes...</div>
-        <button id="reset">Reset Game</button>
-    </div>
-
-    <div id="teamAView" style="display: none;">
-        <h1>Team A</h1>
-        <button id="teamA" class="buzzer">BUZZ!</button>
-        <div id="teamAResult"></div>
-    </div>
-
-    <div id="teamBView" style="display: none;">
-        <h1>Team B</h1>
-        <button id="teamB" class="buzzer">BUZZ!</button>
-        <div id="teamBResult"></div>
-    </div>
+    <div class="status-badge">Connected</div>
 
     <script>
         const socket = io();
         let currentView = 'host';
 
         function showView(view) {
-            document.getElementById('hostView').style.display = 'none';
-            document.getElementById('teamAView').style.display = 'none';
-            document.getElementById('teamBView').style.display = 'none';
-            document.getElementById(view + 'View').style.display = 'block';
+            document.querySelectorAll('.view').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.getElementById(view + 'View').classList.add('active');
             currentView = view;
         }
 
@@ -102,7 +253,7 @@
 
         // Socket event handlers
         socket.on('buzz_result', (data) => {
-            const result = `Team ${data.team} buzzed first!`;
+            const result = `Team ${data.team} buzzed first! 🏆`;
             document.getElementById('hostResult').textContent = result;
             document.getElementById('teamAResult').textContent = result;
             document.getElementById('teamBResult').textContent = result;
@@ -122,6 +273,17 @@
             document.getElementById('teamB').disabled = false;
             document.getElementById('teamA').classList.remove('disabled');
             document.getElementById('teamB').classList.remove('disabled');
+        });
+
+        // Connection status handling
+        socket.on('connect', () => {
+            document.querySelector('.status-badge').textContent = 'Connected';
+            document.querySelector('.status-badge').style.background = 'rgba(46, 204, 113, 0.2)';
+        });
+
+        socket.on('disconnect', () => {
+            document.querySelector('.status-badge').textContent = 'Disconnected';
+            document.querySelector('.status-badge').style.background = 'rgba(231, 76, 60, 0.2)';
         });
     </script>
 </body>
